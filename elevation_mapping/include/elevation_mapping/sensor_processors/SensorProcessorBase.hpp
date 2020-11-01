@@ -23,54 +23,55 @@
 #include <kindr/Core>
 
 // STL
-#include <unordered_map>
-#include <string>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace elevation_mapping {
 
 /*!
-* Generic Sensor processor base class. Provides functionalities
-* common to all sensors and defines the interface for specialized
-* sensor processor classes.
-* Cleans the point cloud, transforms it to a desired frame, and
-* computes the measurement variances based on a sensor model in
-* the desired frame.
-*/
-class SensorProcessorBase
-{
-public:
+ * Generic Sensor processor base class. Provides functionalities
+ * common to all sensors and defines the interface for specialized
+ * sensor processor classes.
+ * Cleans the point cloud, transforms it to a desired frame, and
+ * computes the measurement variances based on a sensor model in
+ * the desired frame.
+ */
+class SensorProcessorBase {
+ public:
+  using Ptr = std::unique_ptr<SensorProcessorBase>;
+  friend class ElevationMapping;
 
   /*!
    * Constructor.
    * @param nodeHandle the ROS node handle.
    * @param transformListener the ROS transform listener.
    */
-	SensorProcessorBase(ros::NodeHandle& nodeHandle, tf::TransformListener& transformListener);
+  SensorProcessorBase(ros::NodeHandle& nodeHandle, tf::TransformListener& transformListener);
 
-	/*!
-	 * Destructor.
-	 */
-	virtual ~SensorProcessorBase();
+  /*!
+   * Destructor.
+   */
+  virtual ~SensorProcessorBase();
 
-	/*!
-	 * Processes the point cloud.
-	 * @param[in] pointCloudInput the input point cloud.
-	 * @param[in] targetFrame the frame to which the point cloud should be transformed. // TODO Update.
-	 * @param[out] pointCloudOutput the processed point cloud.
-	 * @param[out] variances the measurement variances expressed in the target frame.
-	 * @return true if successful.
-	 */
-  bool process(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pointCloudInput,
-               const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
-               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudOutput, Eigen::VectorXf& variances);
+  /*!
+   * Processes the point cloud.
+   * @param[in] pointCloudInput the input point cloud.
+   * @param[in] targetFrame the frame to which the point cloud should be transformed. // TODO Update.
+   * @param[out] pointCloudOutput the processed point cloud.
+   * @param[out] variances the measurement variances expressed in the target frame.
+   * @return true if successful.
+   */
+  bool process(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pointCloudInput, const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
+               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudMapFrame, Eigen::VectorXf& variances);
 
-  typedef std::unique_ptr<SensorProcessorBase> Ptr;
-
-	friend class ElevationMapping;
+  /*!
+   * Checks if a valid tf transformation was received since startup.
+   * @return True if there was one valid tf transformation.
+   */
+  bool isTfAvailableInBuffer() { return firstTfAvailable_; }
 
  protected:
-
   /*!
    * Reads and verifies the parameters.
    * @return true if successful.
@@ -78,11 +79,20 @@ public:
   virtual bool readParameters();
 
   /*!
-   * Cleans the point cloud.
+   * Filters the point cloud regardless of the sensor type. Removes NaN values.
+   * Optionally, applies voxelGridFilter to reduce number of points in
+   * the point cloud.
    * @param pointCloud the point cloud to clean.
    * @return true if successful.
    */
-  virtual bool cleanPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud) = 0;
+  bool filterPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud);
+
+  /*!
+   * Sensor specific point cloud cleaning.
+   * @param pointCloud the point cloud to clean.
+   * @return true if successful.
+   */
+  virtual bool filterPointCloudSensorType(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud);
 
   /*!
    * Computes the elevation map height variances for each point in a point cloud with the
@@ -94,7 +104,6 @@ public:
    */
   virtual bool computeVariances(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pointCloud,
                                 const Eigen::Matrix<double, 6, 6>& robotPoseCovariance, Eigen::VectorXf& variances) = 0;
-
 
   /*!
    * Update the transformations for a given time stamp.
@@ -111,8 +120,7 @@ public:
    * @return true if successful.
    */
   bool transformPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pointCloud,
-                           pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudTransformed,
-                           const std::string& targetFrame);
+                           pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudTransformed, const std::string& targetFrame);
 
   /*!
    * Removes points with z-coordinate above a limit in map frame.
@@ -162,6 +170,12 @@ public:
 
   //! Sensor parameters.
   std::unordered_map<std::string, double> sensorParameters_;
+
+  //! Use VoxelGrid filter to cleanup pointcloud if true.
+  bool applyVoxelGridFilter_;
+
+  //! Indicates if the requested tf transformation was available.
+  bool firstTfAvailable_;
 };
 
 } /* namespace elevation_mapping */

@@ -15,11 +15,8 @@ namespace elevation_mapping {
 /*!
  * Sensor processor for StructuredLight-type (PrimeSense) structured light sensors.
  */
-class StructuredLightSensorProcessor : public SensorProcessorBase
-{
-
-public:
-
+class StructuredLightSensorProcessor : public SensorProcessorBase {
+ public:
   /*!
    * Constructor.
    * @param nodeHandle the ROS node handle.
@@ -30,23 +27,14 @@ public:
   /*!
    * Destructor.
    */
-	virtual ~StructuredLightSensorProcessor();
+  ~StructuredLightSensorProcessor() override;
 
-private:
-
+ private:
   /*!
    * Reads and verifies the parameters.
    * @return true if successful.
    */
-	bool readParameters();
-
-	/*!
-	 * Clean the point cloud. Points below the minimal and above the maximal sensor
-	 * cutoff value are dropped.
-	 * @param pointCloud the point cloud to clean.
-	 * @return true if successful.
-	 */
-	virtual bool cleanPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud);
+  bool readParameters() override;
 
   /*!
    * Computes the elevation map height variances for each point in a point cloud with the
@@ -56,11 +44,14 @@ private:
    * @param[out] variances the elevation map height variances.
    * @return true if successful.
    */
-	virtual bool computeVariances(
-			const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pointCloud,
-			const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
-			Eigen::VectorXf& variances);
+  bool computeVariances(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pointCloud,
+                        const Eigen::Matrix<double, 6, 6>& robotPoseCovariance, Eigen::VectorXf& variances) override;
+
+  /*!
+   * Cuts off points that are not within the cutoff interval
+   * @param pointCloud the point cloud to filter.
+   * @return true if successful.
+   */
+  bool filterPointCloudSensorType(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud) override;
 };
-
-
 } /* namespace elevation_mapping */

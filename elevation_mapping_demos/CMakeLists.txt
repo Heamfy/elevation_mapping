@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5.1)
 project(elevation_mapping_demos)
 
 ## Find catkin macros and libraries
@@ -36,6 +36,38 @@ install(DIRECTORY config doc launch rviz
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
-install(PROGRAMS scripts/ground_truth_pose_publisher.py
+install(PROGRAMS scripts/tf_to_pose_publisher.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+##############
+##   Test   ##
+##############
+if(CATKIN_ENABLE_TESTING)
+  catkin_add_gtest(test_${PROJECT_NAME}
+    test/empty_test.cpp
+  )
+
+  target_include_directories(test_${PROJECT_NAME}
+    PRIVATE
+      include
+    SYSTEM PUBLIC
+      ${catkin_INCLUDE_DIRS}
+  )
+
+  target_link_libraries(test_${PROJECT_NAME}
+    ${catkin_LIBRARIES}
+    gtest_main
+  )
+
+  ###################
+  ## Code_coverage ##
+  ###################
+  find_package(cmake_code_coverage QUIET)
+  if(cmake_code_coverage_FOUND)
+    add_gtest_coverage(
+      TEST_BUILD_TARGETS
+        test_${PROJECT_NAME}
+    )
+  endif()
+endif()
